@@ -1,4 +1,6 @@
 emacs-udisksctl
 ===============
 
-an emacs interface to udisksctl
+An emacs interface to udisksctl. 
+
+Work in progress...
