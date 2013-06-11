@@ -25,9 +25,9 @@
 ;; This file is NOT part of GNU Emacs.
 
 ;;; Commentary:
-;; This is a major mode for to interact with udisksctl. It allows you
-;; to see all mounted devices, unlock an encrypted device and mounting
-;; a device via udisksctl
+;; This is a major mode to interact with udisksctl. It allows you to
+;; see devices, unlock an encrypted device and mounting a device via
+;; udisksctl
 
 ;; Operating Systems:
 ;; Developped under Linux. Should work on all OS'es
