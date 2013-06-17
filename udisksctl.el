@@ -38,9 +38,11 @@
 
 ;;; Customizable variables
 
-(setq udisksctl-buffer-name "*udisksctl*")
-(setq udisksctl-status-cmd "status")
-(setq udisksctl-mount-cmd "mount")
+(defvar udisksctl-buffer-name "*udisksctl*")
+(defvar udisksctl-status-cmd "status")
+(defvar udisksctl-mount-cmd "mount")
+
+
 
 (defvar udisksctl-mode-map
   (let ((map (make-sparse-keymap)))
@@ -59,6 +61,14 @@ via udisksctl.")
   (interactive)
   (read-passwd "Enter passphrase: "))
 
+(defun udisksctl-unlock-device (&optional device)
+  "unlock a device."
+  (interactive)
+  (if (boundp 'device)
+      (...)
+    (...)
+  )
+
 (defun udisksctl-read-device()
 "read a device name to work on (mount, unlock ...)"
   (interactive)
@@ -67,9 +77,9 @@ via udisksctl.")
 (defun udisksctl-mount-device (&optional device)
   "mount the given device"
   (interactive)
-  (if (= device nil)
-      (udisksctl-read-device))
-  (call-process "udisksctl" nil nil nil udisksctl-mount-cmd "-b" device))
+  (if (boundp 'device )
+      (call-process "udisksctl" nil nil nil udisksctl-mount-cmd "-b" (udisksctl-read-device))
+    (call-process "udisksctl" nil nil nil udisksctl-mount-cmd "-b" device)))
 
 (defun udisksctl-status()
   (call-process "udisksctl" nil udisksctl-buffer-name nil
