@@ -31,7 +31,7 @@
 
 ;; Operating Systems:
 ;; Developped under Linux. Should work on all OS'es
-;; hat support the udisksctl command.
+;; that support the udisksctl command.
 
 
 ;;; Code:
@@ -70,7 +70,7 @@ via udisksctl.")
     (setq params (append (list device) params))
     (setq params (append (list "-b") params))
     (setq params (append (list cmd) params))
-    (udisksctl-unlock-comint params)))
+    (udisksctl-comint params)))
 
 (defun udisksctl-execute-cmd (cmd device)
   "execute cmd on device, does not require user input"
@@ -98,8 +98,8 @@ via udisksctl.")
   (setq udisksctl-device (udisksctl-read-device))
   (udisksctl-execute-cmd udisksctl-unmount-cmd udisksctl-device))
 
-(defun udisksctl-unlock-comint(params)
-  (apply 'make-comint "*udiskctl-unlock-comint*" "udisksctl" nil params))
+(defun udisksctl-comint(params)
+  (apply 'make-comint "*udiskctl-comint*" "udisksctl" nil params))
 
 (defun udisksctl-read-device()
 "read a device name to work on (mount, unlock ...)"
