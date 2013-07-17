@@ -26,8 +26,8 @@
 
 ;;; Commentary:
 ;; This is a major mode to interact with udisksctl. It allows you to
-;; see devices, unlock an encrypted device and mounting a device via
-;; udisksctl
+;; see devices, unlock/lock encrypted device and mounting/unmounting
+;; devices via udisksctl
 
 ;; Operating Systems:
 ;; Developped under Linux. Should work on all OS'es
@@ -51,13 +51,25 @@
   (let ((map (make-sparse-keymap)))
     (define-key map "n" 'next-line)
     (define-key map "p" 'previous-line)
+    (define-key map "u" 'udisksctl-unlock)
+    (define-key map "l" 'udisksctl-lock)
+    (define-key map "m" 'udisksctl-mount)
+    (define-key map "u" 'udisksctl-unmount)
+    (define-key map "q" 'kill-buffer)
     map)
   "Keymap for `udisksctl-mode'.")
 
 (define-derived-mode udisksctl-mode special-mode
   "Udisksctl"
   "Major mode for udisksctl. Shows status information about disks
-via udisksctl.")
+via udisksctl.
+
+Keybindings:
+\\{udisksctl-mode-map}"
+  (kill-all-local-variables)
+  (use-local-map udisksctl-mode-map)
+  (setq major-mode 'udisksctl-mode
+	buffer-read-only t))
 
 (defun udisksctl-read-passphrase()
   "read the passphrase for an encrypted device"
@@ -114,7 +126,7 @@ via udisksctl.")
 "creates the udisksctl buffer"
   (get-buffer-create udisksctl-buffer-name)
   (switch-to-buffer udisksctl-buffer-name)
-  (read-only-mode))
+  (udisksctl-mode))
 
 (defun udisksctl()
   "run udiskctl status"
