@@ -54,7 +54,7 @@
     (define-key map "u" 'udisksctl-unlock)
     (define-key map "l" 'udisksctl-lock)
     (define-key map "m" 'udisksctl-mount)
-    (define-key map "u" 'udisksctl-unmount)
+    (define-key map "U" 'udisksctl-unmount)
     (define-key map "q" 'kill-buffer)
     map)
   "Keymap for `udisksctl-mode'.")
@@ -71,11 +71,6 @@ Keybindings:
   (setq major-mode 'udisksctl-mode
 	buffer-read-only t))
 
-(defun udisksctl-read-passphrase()
-  "read the passphrase for an encrypted device"
-  (interactive)
-  (read-passwd "Enter passphrase: "))
-
 (defun udisksctl-execute-cmd-comint (cmd device)
   "execute cmd on device, cmd requires user input"
   (let (params)
@@ -84,39 +79,52 @@ Keybindings:
     (setq params (append (list cmd) params))
     (udisksctl-comint params)))
 
+(defun udisksctl-comint(params)
+  (let ((old-buf (current-buffer))
+	(udisksctl-comint-buffer-name "*udisksctl-comint*"))
+    (with-current-buffer (get-buffer-create udisksctl-comint-buffer-name)
+      (apply 'make-comint-in-buffer "udiskctl-comint" udisksctl-comint-buffer-name "udisksctl" nil params))))
+
 (defun udisksctl-execute-cmd (cmd device)
   "execute cmd on device, does not require user input"
-  (if (boundp 'device )
-      (call-process "udisksctl" nil nil nil cmd "-b" device)
-    (call-process "udisksctl" nil nil nil cmd "-b" device)))
+  (call-process "udisksctl" nil nil nil cmd "-b" device))
 
-(defun udisksctl-unlock()
+(defun udisksctl-unlock(&optional device)
   (interactive)
-  (setq udisksctl-device (udisksctl-read-device))
+  (if (not device)
+      (setq udisksctl-device (udisksctl-read-device "Enter device name to unlock: "))
+    (setq udisksctl-device 'device))
   (udisksctl-execute-cmd-comint udisksctl-unlock-cmd udisksctl-device))
 
-(defun udisksctl-lock()
+(defun udisksctl-lock(&optional device)
   (interactive)
-  (setq udisksctl-device (udisksctl-read-device))
-  (udisksctl-execute-cmd-comint udisksctl-lock-cmd udisksctl-device))
+  (if (not device)
+      (setq udisksctl-device (udisksctl-read-device "Enter device name to lock: "))
+    (setq udisksctl-device 'device))
+  (udisksctl-execute-cmd udisksctl-lock-cmd udisksctl-device))
 
-(defun udisksctl-mount()
+(defun udisksctl-mount(&optional device)
   (interactive)
-  (setq udisksctl-device (udisksctl-read-device))
+  (if (not device)
+      (setq udisksctl-device (udisksctl-read-device "Enter device name to mount: "))
+    (setq udisksctl-device 'device))
   (udisksctl-execute-cmd udisksctl-mount-cmd udisksctl-device))
 
-(defun udisksctl-unmount()
+(defun udisksctl-unmount(&optional device)
   (interactive)
-  (setq udisksctl-device (udisksctl-read-device))
+  (if (not device)
+      (setq udisksctl-device (udisksctl-read-device "Enter device name to unmount: "))
+    (setq udisksctl-device 'device))
   (udisksctl-execute-cmd udisksctl-unmount-cmd udisksctl-device))
 
-(defun udisksctl-comint(params)
-  (apply 'make-comint "*udiskctl-comint*" "udisksctl" nil params))
 
-(defun udisksctl-read-device()
+(defun udisksctl-read-device(&optional message)
 "read a device name to work on (mount, unlock ...)"
   (interactive)
-  (read-string "Enter device name: "))
+  (if (boundp 'message)
+      (read-string message)
+    (read-string "Enter device name: ")))
+
 
 (defun udisksctl-status()
   (call-process "udisksctl" nil udisksctl-buffer-name nil
