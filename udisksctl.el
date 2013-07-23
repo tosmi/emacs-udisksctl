@@ -46,6 +46,7 @@
 (defvar udisksctl-unmount-cmd "unmount")
 (defvar udisksctl-unlock-cmd "unlock")
 (defvar udisksctl-lock-cmd "lock")
+(defvar udisksctl-output nil)
 
 (defvar udisksctl-mode-map
   (let ((map (make-sparse-keymap)))
@@ -87,7 +88,14 @@ Keybindings:
 
 (defun udisksctl-execute-cmd (cmd device)
   "execute cmd on device, does not require user input"
-  (call-process "udisksctl" nil nil nil cmd "-b" device))
+  (let ((process-connection-type t)
+	(udisksctl-comint-buffer-name "*udisksctl-comint*"))
+    (set-process-filter (start-process "udisksctl" udisksctl-comint-buffer-name "udisksctl" cmd "-b" device) 'udisksctl-process-filter)))
+
+(defun udisksctl-process-filter (proc string)
+  (setq udisksctl-output (cons string udisksctl-output))
+  (if (string-match "exited abnormally" udisksctl-output)
+      (message "udiskctl failed!")))
 
 (defun udisksctl-unlock(&optional device)
   (interactive)
