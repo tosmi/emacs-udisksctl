@@ -90,6 +90,7 @@ Keybindings:
   "execute cmd on device, does not require user input"
   (let ((process-connection-type t)
 	(udisksctl-comint-buffer-name "*udisksctl-comint*"))
+    (setq udisksctl-output nil)
     (set-process-filter (start-process "udisksctl" udisksctl-comint-buffer-name "udisksctl" cmd "-b" device) 'udisksctl-process-filter)))
 
 (defun udisksctl-process-filter (proc string)
