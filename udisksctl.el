@@ -96,6 +96,7 @@ Keybindings:
       (apply 'make-comint-in-buffer "udiskctl-comint" udisksctl-comint-buffer-name "udisksctl" nil params))))
 
 (defvar udisksctl-execute-buffer-name "*udisksctl-process*")
+(defvar udisksctl-process nil)
 
 (defun udisksctl-execute-cmd (cmd device)
   "execute cmd on device, does not require user input"
