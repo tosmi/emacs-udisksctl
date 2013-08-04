@@ -38,6 +38,15 @@
 
 ;;; Customizable variables
 
+;;; Todo
+;; - excute-cmd should use a tmp buffer an not a filter function maybe
+;; - we should filter the udisksctl output through a filter function
+;; - if a device is unlocked save the unlocked device name and the
+;;   dm-? device name created
+;; - if a device gets mounted save the device name
+;; - maybe the functions to mount/unmount/lock/unlock could be
+;;   defined via defmacro?
+
 (require 'comint)
 
 (defvar udisksctl-buffer-name "*udisksctl*")
@@ -86,24 +95,36 @@ Keybindings:
     (with-current-buffer (get-buffer-create udisksctl-comint-buffer-name)
       (apply 'make-comint-in-buffer "udiskctl-comint" udisksctl-comint-buffer-name "udisksctl" nil params))))
 
+(defvar udisksctl-execute-buffer-name "*udisksctl-process*")
+
 (defun udisksctl-execute-cmd (cmd device)
   "execute cmd on device, does not require user input"
   (let ((process-connection-type t)
-	(udisksctl-comint-buffer-name "*udisksctl-comint*"))
+	(buf (get-buffer-create udisksctl-execute-buffer-name)))
+    (if (get-buffer udisksctl-execute-buffer-name)
+	(kill-buffer udisksctl-execute-buffer-name))
     (setq udisksctl-output nil)
-    (set-process-filter (start-process "udisksctl" udisksctl-comint-buffer-name "udisksctl" cmd "-b" device) 'udisksctl-process-filter)))
+    (setq udisksctl-process
+	  (apply 'start-process "udisksctl" udisksctl-execute-buffer-name "udisksctl" cmd "-b" device))))
 
-(defun udisksctl-process-filter (proc string)
-  (setq udisksctl-output (cons string udisksctl-output))
-  (if (string-match "exited abnormally" udisksctl-output)
-      (message "udiskctl failed!")))
+(defun udisksctl-process-filter(proc string)
+  "filter udisksctl output for a password prompt"
+  (save-current-buffer
+    (set-buffer (process-buffer proc))
+    (if (string-match "^Passphrase: " string)
+	(process-send-string proc (read-passwd "Passphrase: " nil)))))
+
+(defun udisksctl-parse-output(udisksctl-proc)
+  (save-current-buffer
+    (set-buffer (process-buffer udisksctl-proc))))
+
 
 (defun udisksctl-unlock(&optional device)
   (interactive)
   (if (not device)
       (setq udisksctl-device (udisksctl-read-device "Enter device name to unlock: "))
     (setq udisksctl-device 'device))
-  (udisksctl-execute-cmd-comint udisksctl-unlock-cmd udisksctl-device))
+  (udisksctl-execute-cmd udisksctl-unlock-cmd udisksctl-device))
 
 (defun udisksctl-lock(&optional device)
   (interactive)
