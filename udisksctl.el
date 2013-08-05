@@ -95,18 +95,27 @@ Keybindings:
     (with-current-buffer (get-buffer-create udisksctl-comint-buffer-name)
       (apply 'make-comint-in-buffer "udiskctl-comint" udisksctl-comint-buffer-name "udisksctl" nil params))))
 
-(defvar udisksctl-execute-buffer-name "*udisksctl-process*")
+(defvar udisksctl-process-buffer-name "*udisksctl-process*")
 (defvar udisksctl-process nil)
 
 (defun udisksctl-execute-cmd (cmd device)
   "execute cmd on device, does not require user input"
   (let ((process-connection-type t)
-	(buf (get-buffer-create udisksctl-execute-buffer-name)))
-    (if (get-buffer udisksctl-execute-buffer-name)
-	(kill-buffer udisksctl-execute-buffer-name))
+	(buf (get-buffer-create udisksctl-process-buffer-name)))
+    (if (get-buffer udisksctl-process-buffer-name)
+	(kill-buffer udisksctl-process-buffer-name))
     (setq udisksctl-output nil)
     (setq udisksctl-process
-	  (apply 'start-process "udisksctl" udisksctl-execute-buffer-name "udisksctl" cmd "-b" device))))
+	  (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device))
+    (set-process-filter udisksctl-process 'udisksctl-process-filter)
+    (while (equal (process-status udisksctl-process) 'run)
+      (sit-for 0.1 t))
+    (or (equal (process-exit-status udisksctl-process) 0)
+	(error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
+			  (re-search-backward (concat "^\\(Error.*\\)" paragraph-separate) nil t)
+			  (match-string 1))
+			"udiskctl failed"
+			)))))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
