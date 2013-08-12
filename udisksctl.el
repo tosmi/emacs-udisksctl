@@ -97,22 +97,26 @@ Keybindings:
 
 (defvar udisksctl-process-buffer-name "*udisksctl-process*")
 (defvar udisksctl-process nil)
+(setq debug-on-error nil)
 
-(defun udisksctl-execute-cmd (cmd device)
+(defun udisksctl-execute-cmd (cmd device &optional noerase)
   "execute cmd on device, does not require user input"
-  (let ((process-connection-type t)
-	(buf (get-buffer-create udisksctl-process-buffer-name)))
-    (if (get-buffer udisksctl-process-buffer-name)
-	(kill-buffer udisksctl-process-buffer-name))
-    (setq udisksctl-output nil)
-    (setq udisksctl-process
-	  (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device))
+  (let ((process-connection-type t))
+    (get-buffer-create  udisksctl-process-buffer-name)
+    (with-current-buffer udisksctl-process-buffer-name
+      (if noerase
+	  (goto-char (point-max))
+	(erase-buffer))
+      (setq udisksctl-output nil)
+      (setq udisksctl-process
+	    (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device)))
     (set-process-filter udisksctl-process 'udisksctl-process-filter)
-    (while (equal (process-status udisksctl-process) 'run)
-      (sit-for 0.1 t))
+    (set-process-sentinel udisksctl-process 'udisksctl-process-sentinel)
+    (message (format "udisksctl exit status: %i" (process-exit-status udisksctl-process)))
     (or (equal (process-exit-status udisksctl-process) 0)
 	(error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
-			  (re-search-backward (concat "^\\(Error.*\\)" paragraph-separate) nil t)
+			  (goto-char (point-min))
+			  (re-search-forward (concat "^\\(exited abnormally.*\\)" paragraph-separate) nil t)
 			  (match-string 1))
 			"udiskctl failed"
 			)))))
@@ -121,8 +125,17 @@ Keybindings:
   "filter udisksctl output for a password prompt"
   (save-current-buffer
     (set-buffer (process-buffer proc))
+    (message (process-tty-name proc))
+    (message (process-status proc))
     (if (string-match "^Passphrase: " string)
-	(process-send-string proc (read-passwd "Passphrase: " nil)))))
+	(process-send-string proc (read-passwd "Passphrasexx: " nil)))))
+
+(defun udisksctl-process-sentinel(proc event)
+  (message event)
+  (with-current-buffer (process-buffer proc)
+    (let ((inhibit-read-only t))
+      (goto-char (point-max))
+      (insert event "\n"))))
 
 (defun udisksctl-parse-output(udisksctl-proc)
   (save-current-buffer
