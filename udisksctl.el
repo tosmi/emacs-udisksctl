@@ -65,7 +65,7 @@
     (define-key map "l" 'udisksctl-lock)
     (define-key map "m" 'udisksctl-mount)
     (define-key map "U" 'udisksctl-unmount)
-    (define-key map "q" 'kill-buffer)
+;;    (define-key map "q" 'kill-buffer)
     map)
   "Keymap for `udisksctl-mode'.")
 
@@ -112,26 +112,33 @@ Keybindings:
 	    (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device)))
     (set-process-filter udisksctl-process 'udisksctl-process-filter)
     (set-process-sentinel udisksctl-process 'udisksctl-process-sentinel)
-    (message (format "udisksctl exit status: %i" (process-exit-status udisksctl-process)))
-    (or (equal (process-exit-status udisksctl-process) 0)
+    (sit-for 0.1)
+    (if (equal (process-exit-status udisksctl-process) 0)
 	(error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
 			  (goto-char (point-min))
-			  (re-search-forward (concat "^\\(exited abnormally.*\\)" paragraph-separate) nil t)
+			  (re-search-forward (concat "^\\(Error.*\\)" paragraph-separate) nil t)
 			  (match-string 1))
 			"udiskctl failed"
-			)))))
+			))
+
+      (message "%s" (with-current-buffer (get-buffer udisksctl-process-buffer-name)
+		      (goto-char (point-min))
+		      (re-search-forward "^\\(.*\\)$" nil t)
+		      (match-string 1))))))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
   (save-current-buffer
     (set-buffer (process-buffer proc))
-    (message (process-tty-name proc))
-    (message (process-status proc))
     (if (string-match "^Passphrase: " string)
-	(process-send-string proc (read-passwd "Passphrasexx: " nil)))))
+	(process-send-string proc (concat (read-passwd "Passphrase: " nil) "\n"))
+      (save-excursion
+	(goto-char (process-mark proc))
+	(insert string)
+	(set-marker (process-mark proc) (point))
+	(goto-char (process-mark proc))))))
 
 (defun udisksctl-process-sentinel(proc event)
-  (message event)
   (with-current-buffer (process-buffer proc)
     (let ((inhibit-read-only t))
       (goto-char (point-max))
