@@ -47,8 +47,6 @@
 ;; - maybe the functions to mount/unmount/lock/unlock could be
 ;;   defined via defmacro?
 
-(require 'comint)
-
 (defvar udisksctl-buffer-name "*udisksctl*")
 (defvar udisksctl-status-cmd "status")
 (defvar udisksctl-mount-cmd "mount")
@@ -81,22 +79,10 @@ Keybindings:
   (setq major-mode 'udisksctl-mode
 	buffer-read-only t))
 
-(defun udisksctl-execute-cmd-comint (cmd device)
-  "execute cmd on device, cmd requires user input"
-  (let (params)
-    (setq params (append (list device) params))
-    (setq params (append (list "-b") params))
-    (setq params (append (list cmd) params))
-    (udisksctl-comint params)))
-
-(defun udisksctl-comint(params)
-  (let ((old-buf (current-buffer))
-	(udisksctl-comint-buffer-name "*udisksctl-comint*"))
-    (with-current-buffer (get-buffer-create udisksctl-comint-buffer-name)
-      (apply 'make-comint-in-buffer "udiskctl-comint" udisksctl-comint-buffer-name "udisksctl" nil params))))
-
 (defvar udisksctl-process-buffer-name "*udisksctl-process*")
 (defvar udisksctl-process nil)
+(defvar udisksctl-device nil)
+
 (setq debug-on-error nil)
 
 (defun udisksctl-execute-cmd (cmd device &optional noerase)
@@ -112,19 +98,28 @@ Keybindings:
 	    (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device)))
     (set-process-filter udisksctl-process 'udisksctl-process-filter)
     (set-process-sentinel udisksctl-process 'udisksctl-process-sentinel)
-    (sit-for 0.1)
-    (if (equal (process-exit-status udisksctl-process) 0)
-	(error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
-			  (goto-char (point-min))
-			  (re-search-forward (concat "^\\(Error.*\\)" paragraph-separate) nil t)
-			  (match-string 1))
-			"udiskctl failed"
-			))
+    (sit-for 1)
+    (message "bla")
+    (if (not (equal (process-exit-status udisksctl-process) 0))
+	(udisksctl-error-message)
+      (udisksctl-success-message))))
 
-      (message "%s" (with-current-buffer (get-buffer udisksctl-process-buffer-name)
-		      (goto-char (point-min))
-		      (re-search-forward "^\\(.*\\)$" nil t)
-		      (match-string 1))))))
+(defun udisksctl-error-message()
+  (error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
+		    (goto-char (point-min))
+		    (or
+		     (re-search-forward "\\(No key available with this passphrase\\)" nil t)
+		     (re-search-forward "\\(Device [^[:space:]]+ is not unlocked\\)" nil t)
+		     (re-search-forward (concat "^\\(Error.*\\)" paragraph-separate) nil t))
+		    (match-string 1))
+		  "udiskctl failed"
+		  )))
+
+(defun udisksctl-success-message()
+  (message "%s" (with-current-buffer (get-buffer udisksctl-process-buffer-name)
+		  (goto-char (point-min))
+		  (re-search-forward "^\\(.*\\)$" nil t)
+		  (match-string 1))))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
@@ -204,3 +199,4 @@ Keybindings:
     (udisksctl-status)))
 
 (provide 'udisksctl-mode)
+;;; udisksctl.el ends here
