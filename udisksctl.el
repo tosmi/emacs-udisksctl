@@ -63,6 +63,7 @@
     (define-key map "l" 'udisksctl-lock)
     (define-key map "m" 'udisksctl-mount)
     (define-key map "U" 'udisksctl-unmount)
+    (define-key map "g" 'udisksctl-refresh-buffer)
 ;;    (define-key map "q" 'kill-buffer)
     map)
   "Keymap for `udisksctl-mode'.")
@@ -185,9 +186,18 @@ Keybindings:
   (call-process "udisksctl" nil udisksctl-buffer-name nil
 		udisksctl-status-cmd))
 
+(defun udisksctl-refresh-buffer()
+  (interactive)
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (udisksctl-status)))
+
 (defun udisksctl-buffer()
-"creates the udisksctl buffer"
-  (get-buffer-create udisksctl-buffer-name)
+  "creates the udisksctl buffer"
+  (if (not (buffer-live-p (get-buffer udisksctl-buffer-name)))
+      (progn
+	(get-buffer-create udisksctl-buffer-name)
+	(udisksctl-status)))
   (switch-to-buffer udisksctl-buffer-name)
   (udisksctl-mode))
 
@@ -195,8 +205,7 @@ Keybindings:
   "run udiskctl status"
   (interactive)
   (progn
-    (udisksctl-buffer)
-    (udisksctl-status)))
+    (udisksctl-buffer)))
 
 (provide 'udisksctl-mode)
 ;;; udisksctl.el ends here
