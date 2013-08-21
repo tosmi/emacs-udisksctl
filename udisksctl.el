@@ -54,6 +54,11 @@
 (defvar udisksctl-unlock-cmd "unlock")
 (defvar udisksctl-lock-cmd "lock")
 (defvar udisksctl-output nil)
+(defvar udisksctl-process-buffer-name "*udisksctl-process*")
+(defvar udisksctl-process nil)
+(defvar udisksctl-device nil)
+(defvar udisksctl-mapped-devices nil)
+(defvar udisksctl-mounted-devices nil)
 
 (defvar udisksctl-mode-map
   (let ((map (make-sparse-keymap)))
@@ -80,10 +85,6 @@ Keybindings:
   (setq major-mode 'udisksctl-mode
 	buffer-read-only t))
 
-(defvar udisksctl-process-buffer-name "*udisksctl-process*")
-(defvar udisksctl-process nil)
-(defvar udisksctl-device nil)
-
 (setq debug-on-error nil)
 
 (defun udisksctl-execute-cmd (cmd device &optional noerase)
@@ -99,11 +100,12 @@ Keybindings:
 	    (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device)))
     (set-process-filter udisksctl-process 'udisksctl-process-filter)
     (set-process-sentinel udisksctl-process 'udisksctl-process-sentinel)
-    (sit-for 1)
-    (message "bla")
+    (sit-for 0.1)
     (if (not (equal (process-exit-status udisksctl-process) 0))
 	(udisksctl-error-message)
-      (udisksctl-success-message))))
+      (progn
+	(udisksctl-success-message)
+	(udisksctl-remember-mounts-and-mappings)))))
 
 (defun udisksctl-error-message()
   (error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
@@ -121,6 +123,20 @@ Keybindings:
 		  (goto-char (point-min))
 		  (re-search-forward "^\\(.*\\)$" nil t)
 		  (match-string 1))))
+
+(defun udisksctl-remember-mounts-and-mappings()
+  (with-current-buffer (get-buffer udisksctl-process-buffer-name)
+    (goto-char (point-min))
+    (if (re-search-forward "\\(.*\\)")
+	)
+    ))
+
+(defun udisksctl-print-alist (list format)
+  (when list
+    (let ((device (car (car list)))
+	  (dmdevice (cdr (car list))))
+      (insert (format format device dmdevice))
+      (print-list (cdr list)))))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
