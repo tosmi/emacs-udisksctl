@@ -100,7 +100,8 @@ Keybindings:
 	    (start-process "udisksctl" udisksctl-process-buffer-name "udisksctl" cmd "-b" device)))
     (set-process-filter udisksctl-process 'udisksctl-process-filter)
     (set-process-sentinel udisksctl-process 'udisksctl-process-sentinel)
-    (sit-for 0.1)
+    (while (equal (process-status udisksctl-process) 'run)
+      (sit-for 0.1 t))
     (if (not (equal (process-exit-status udisksctl-process) 0))
 	(udisksctl-error-message)
       (progn
@@ -111,7 +112,7 @@ Keybindings:
   (error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
 		    (goto-char (point-min))
 		    (or
-		     (re-search-forward "[^[:space:]].*?\\.$" nil t))
+		     (re-search-forward "^\\([^[:space:]].*?\\)\\.$" nil t))
 ;;		     (re-search-forward "\\(^[^[:space:]].*$\\)" nil t))
 ;;		     (re-search-forward "\\(No key available with this passphrase\\)" nil t)
 ;;		     (re-search-forward "\\(Device [^[:space:]]+ is not unlocked\\)" nil t)
@@ -126,20 +127,27 @@ Keybindings:
 		  (re-search-forward "^\\(.*\\)$" nil t)
 		  (match-string 1))))
 
-(defvar udisksctl-status-list nil)
+(defvar udisksctl-status-list '())
+(setq udisksctl-status-list nil)
 (defun udisksctl-remember-mounts-and-mappings()
   (with-current-buffer (get-buffer udisksctl-process-buffer-name)
     (goto-char (point-min))
-    (or
-     (re-search-forward "Unlocked \\([^[:space:]]+\\) as \\([^[:space:]]+\\)\."))
-    (setq udisksctl-status-list (cons (cons (match-string 1) (match-string 2)) udisksctl-status-list))))
+    (cond ((or
+	    (re-search-forward "Unlocked \\([^[:space:]]+\\) as \\([^[:space:]]+\\)\." nil t)
+	    (re-search-forward "Mounted \\([^[:space:]]+\\) at \\([^[:space:]]+\\)\.?" nil t))
+	   (setq udisksctl-status-list (cons (cons (match-string 1) (match-string 2)) udisksctl-status-list))))))
 
 (defun udisksctl-print-alist (list format)
   (when list
     (let ((device (car (car list)))
 	  (dmdevice (cdr (car list))))
       (insert (format format device dmdevice))
-      (print-list (cdr list)))))
+      (udisksctl-print-alist (cdr list)))))
+
+(defun udisksctl-print-status()
+  (with-current-buffer (get-buffer udisksctl-buffer-name)
+    (goto-char (point-max))
+    (udisksctl-print-alist udisksctl-status-list "%s mapped to %s\n")))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
@@ -203,7 +211,8 @@ Keybindings:
 
 (defun udisksctl-status()
   (call-process "udisksctl" nil udisksctl-buffer-name nil
-		udisksctl-status-cmd))
+		udisksctl-status-cmd)
+  (udisksctl-print-status))
 
 (defun udisksctl-refresh-buffer()
   (interactive)
