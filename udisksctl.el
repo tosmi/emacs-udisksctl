@@ -111,9 +111,11 @@ Keybindings:
   (error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
 		    (goto-char (point-min))
 		    (or
-		     (re-search-forward "\\(No key available with this passphrase\\)" nil t)
-		     (re-search-forward "\\(Device [^[:space:]]+ is not unlocked\\)" nil t)
-		     (re-search-forward (concat "^\\(Error.*\\)" paragraph-separate) nil t))
+		     (re-search-forward "[^[:space:]].*?\\.$" nil t))
+;;		     (re-search-forward "\\(^[^[:space:]].*$\\)" nil t))
+;;		     (re-search-forward "\\(No key available with this passphrase\\)" nil t)
+;;		     (re-search-forward "\\(Device [^[:space:]]+ is not unlocked\\)" nil t)
+;;		     (re-search-forward (concat "^\\(Error.*\\)" paragraph-separate) nil t))
 		    (match-string 1))
 		  "udiskctl failed"
 		  )))
@@ -124,12 +126,13 @@ Keybindings:
 		  (re-search-forward "^\\(.*\\)$" nil t)
 		  (match-string 1))))
 
+(defvar udisksctl-status-list nil)
 (defun udisksctl-remember-mounts-and-mappings()
   (with-current-buffer (get-buffer udisksctl-process-buffer-name)
     (goto-char (point-min))
-    (if (re-search-forward "\\(.*\\)")
-	)
-    ))
+    (or
+     (re-search-forward "Unlocked \\([^[:space:]]+\\) as \\([^[:space:]]+\\)\."))
+    (setq udisksctl-status-list (cons (cons (match-string 1) (match-string 2)) udisksctl-status-list))))
 
 (defun udisksctl-print-alist (list format)
   (when list
