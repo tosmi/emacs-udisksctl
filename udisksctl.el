@@ -106,7 +106,8 @@ Keybindings:
 	(udisksctl-error-message)
       (progn
 	(udisksctl-success-message)
-	(udisksctl-remember-mounts-and-mappings)))))
+	(udisksctl-remember-mounts-and-mappings)))
+    (udisksctl-refresh-buffer)))
 
 (defun udisksctl-error-message()
   (error "%s" (or (with-current-buffer (get-buffer udisksctl-process-buffer-name)
@@ -127,27 +128,36 @@ Keybindings:
 		  (re-search-forward "^\\(.*\\)$" nil t)
 		  (match-string 1))))
 
-(defvar udisksctl-status-list '())
-(setq udisksctl-status-list nil)
+(defvar udisksctl-status-list nil)
 (defun udisksctl-remember-mounts-and-mappings()
   (with-current-buffer (get-buffer udisksctl-process-buffer-name)
     (goto-char (point-min))
     (cond ((or
 	    (re-search-forward "Unlocked \\([^[:space:]]+\\) as \\([^[:space:]]+\\)\." nil t)
 	    (re-search-forward "Mounted \\([^[:space:]]+\\) at \\([^[:space:]]+\\)\.?" nil t))
-	   (setq udisksctl-status-list (cons (cons (match-string 1) (match-string 2)) udisksctl-status-list))))))
+	   (add-to-list 'udisksctl-status-list (cons (match-string 1) (match-string 2)))))
+    (cond ((or
+	    (re-search-forward "Unmounted \\([^[:space:]]+\\)\." nil t))
+	   (udisksctl-remove-mapping (match-string 1))))))
+
+(defun udisksctl-remove-mapping (searchkey)
+  (let((key (assoc searchkey udisksctl-status-list)))
+    (setq udisksctl-status-list (assq-delete-all (car key) udisksctl-status-list))))
 
 (defun udisksctl-print-alist (list format)
   (when list
     (let ((device (car (car list)))
 	  (dmdevice (cdr (car list))))
       (insert (format format device dmdevice))
-      (udisksctl-print-alist (cdr list)))))
+      (udisksctl-print-alist (cdr list) format))))
 
 (defun udisksctl-print-status()
   (with-current-buffer (get-buffer udisksctl-buffer-name)
     (goto-char (point-max))
-    (udisksctl-print-alist udisksctl-status-list "%s mapped to %s\n")))
+    (if (not (equal udisksctl-status-list nil))
+	(progn
+	  (insert "\nDevice mappings\n--------------\n")
+	  (udisksctl-print-alist udisksctl-status-list "%s mapped to %s\n")))))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
@@ -170,7 +180,6 @@ Keybindings:
 (defun udisksctl-parse-output(udisksctl-proc)
   (save-current-buffer
     (set-buffer (process-buffer udisksctl-proc))))
-
 
 (defun udisksctl-unlock(&optional device)
   (interactive)
@@ -199,7 +208,6 @@ Keybindings:
       (setq udisksctl-device (udisksctl-read-device "Enter device name to unmount: "))
     (setq udisksctl-device 'device))
   (udisksctl-execute-cmd udisksctl-unmount-cmd udisksctl-device))
-
 
 (defun udisksctl-read-device(&optional message)
 "read a device name to work on (mount, unlock ...)"
