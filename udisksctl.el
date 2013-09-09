@@ -25,12 +25,12 @@
 ;; This file is NOT part of GNU Emacs.
 
 ;;; Commentary:
-;; This is a major mode to interact with udisksctl. It allows you to
+;; This is a major mode to interact with udisksctl.  It allows you to
 ;; see devices, unlock/lock encrypted device and mounting/unmounting
 ;; devices via udisksctl
 
 ;; Operating Systems:
-;; Developped under Linux. Should work on all OS'es
+;; Developped under Linux.  Should work on all OS'es
 ;; that support the udisksctl command.
 
 
@@ -39,11 +39,6 @@
 ;;; Customizable variables
 
 ;;; Todo
-;; - excute-cmd should use a tmp buffer an not a filter function maybe
-;; - we should filter the udisksctl output through a filter function
-;; - if a device is unlocked save the unlocked device name and the
-;;   dm-? device name created
-;; - if a device gets mounted save the device name
 ;; - maybe the functions to mount/unmount/lock/unlock could be
 ;;   defined via defmacro?
 
@@ -69,7 +64,6 @@
     (define-key map "m" 'udisksctl-mount)
     (define-key map "U" 'udisksctl-unmount)
     (define-key map "g" 'udisksctl-refresh-buffer)
-;;    (define-key map "q" 'kill-buffer)
     map)
   "Keymap for `udisksctl-mode'.")
 
@@ -88,7 +82,8 @@ Keybindings:
 (setq debug-on-error nil)
 
 (defun udisksctl-execute-cmd (cmd device &optional noerase)
-  "execute cmd on device, does not require user input"
+  "Execute CMD on DEVICE, does not require user input.
+If NOERASE is specified the output buffer will not be erased."
   (let ((process-connection-type t))
     (get-buffer-create  udisksctl-process-buffer-name)
     (with-current-buffer udisksctl-process-buffer-name
@@ -141,23 +136,17 @@ Keybindings:
 	   (udisksctl-remove-mapping (match-string 1))))))
 
 (defun udisksctl-remove-mapping (searchkey)
+  "Search for SEARCHKEY in the status list."
   (let((key (assoc searchkey udisksctl-status-list)))
     (setq udisksctl-status-list (assq-delete-all (car key) udisksctl-status-list))))
 
 (defun udisksctl-print-alist (list format)
+  "Print the assoc LIST with the FORMAT specified."
   (when list
     (let ((device (car (car list)))
 	  (dmdevice (cdr (car list))))
       (insert (format format device dmdevice))
       (udisksctl-print-alist (cdr list) format))))
-
-(defun udisksctl-print-status()
-  (with-current-buffer (get-buffer udisksctl-buffer-name)
-    (goto-char (point-max))
-    (if (not (equal udisksctl-status-list nil))
-	(progn
-	  (insert "\nDevice mappings\n--------------\n")
-	  (udisksctl-print-alist udisksctl-status-list "%s mapped to %s\n")))))
 
 (defun udisksctl-process-filter(proc string)
   "filter udisksctl output for a password prompt"
@@ -180,6 +169,18 @@ Keybindings:
 (defun udisksctl-parse-output(udisksctl-proc)
   (save-current-buffer
     (set-buffer (process-buffer udisksctl-proc))))
+
+;; (defmacro udiskctl-cmd (cmd &optional device)
+;;   "Run the given udisksctl CMD on DEVICE."
+;;   `(interactive)
+;;   `(if (not device)
+;;        `(setq udisksctl-device (udisksctl-read-device "Enter device name to lock: "))
+;;      `(setq udisksctl-device 'device))
+;;   `(udisksctl-execute-cmd udisksctl-(cmd)-cmd udisksctl-device))
+
+;; (macroexpand '(udiskctl-cmd "unlock" "/dev/sde1"))
+
+;; (udiskctl-cmd )
 
 (defun udisksctl-unlock(&optional device)
   (interactive)
@@ -211,37 +212,45 @@ Keybindings:
 
 (defun udisksctl-read-device(&optional message)
 "read a device name to work on (mount, unlock ...)"
-  (interactive)
   (if (boundp 'message)
       (read-string message)
     (read-string "Enter device name: ")))
 
-
-(defun udisksctl-status()
+(defun udisksctl-status-cmd()
   (call-process "udisksctl" nil udisksctl-buffer-name nil
 		udisksctl-status-cmd)
   (udisksctl-print-status))
 
-(defun udisksctl-refresh-buffer()
-  (interactive)
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (udisksctl-status)))
+(defun udisksctl-print-status()
+  (with-current-buffer (get-buffer udisksctl-buffer-name)
+    (goto-char (point-max))
+    (if (not (equal udisksctl-status-list nil))
+	(progn
+	  (insert "\nDevice mappings\n---------------\n")
+	  (udisksctl-print-alist udisksctl-status-list "%s mapped to %s\n")))))
 
-(defun udisksctl-buffer()
+(defun udisksctl-refresh-buffer()
+""
+  (interactive)
+  (with-current-buffer (get-buffer udisksctl-buffer-name)
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (udisksctl-status-cmd))))
+
+(defun udisksctl-create-buffer()
   "creates the udisksctl buffer"
   (if (not (buffer-live-p (get-buffer udisksctl-buffer-name)))
       (progn
 	(get-buffer-create udisksctl-buffer-name)
-	(udisksctl-status)))
+	(udisksctl-refresh-buffer)))
   (switch-to-buffer udisksctl-buffer-name)
   (udisksctl-mode))
 
-(defun udisksctl()
+(defun udisksctl-status()
   "run udiskctl status"
   (interactive)
   (progn
-    (udisksctl-buffer)))
+    (udisksctl-create-buffer)))
 
 (provide 'udisksctl-mode)
 ;;; udisksctl.el ends here
