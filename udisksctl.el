@@ -246,11 +246,12 @@ If NOERASE is specified the output buffer will not be erased."
   (switch-to-buffer udisksctl-buffer-name)
   (udisksctl-mode))
 
+;;;###autoload
 (defun udisksctl-status()
   "run udiskctl status"
   (interactive)
   (progn
     (udisksctl-create-buffer)))
 
-(provide 'udisksctl-mode)
+(provide 'udisksctl)
 ;;; udisksctl.el ends here
