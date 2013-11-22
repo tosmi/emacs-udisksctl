@@ -109,10 +109,6 @@ If NOERASE is specified the output buffer will not be erased."
 		    (goto-char (point-min))
 		    (or
 		     (re-search-forward "^\\([^[:space:]].*?\\)\\.$" nil t))
-;;		     (re-search-forward "\\(^[^[:space:]].*$\\)" nil t))
-;;		     (re-search-forward "\\(No key available with this passphrase\\)" nil t)
-;;		     (re-search-forward "\\(Device [^[:space:]]+ is not unlocked\\)" nil t)
-;;		     (re-search-forward (concat "^\\(Error.*\\)" paragraph-separate) nil t))
 		    (match-string 1))
 		  "udiskctl failed"
 		  )))
@@ -132,7 +128,8 @@ If NOERASE is specified the output buffer will not be erased."
 	    (re-search-forward "Mounted \\([^[:space:]]+\\) at \\([^[:space:]]+\\)\.?" nil t))
 	   (add-to-list 'udisksctl-status-list (cons (match-string 1) (match-string 2)))))
     (cond ((or
-	    (re-search-forward "Unmounted \\([^[:space:]]+\\)\." nil t))
+	    (re-search-forward "Unmounted \\([^[:space:]]+\\)\." nil t)
+	    (re-search-forward "Locked \\([^[:space:]]+\\)\." nil t))
 	   (udisksctl-remove-mapping (match-string 1))))))
 
 (defun udisksctl-remove-mapping (searchkey)
